@@ -17,8 +17,10 @@ app.use(cookieParser())
 
 
 // routes
+import userRouter from "./routes/user.route.js";
 
 // route decleration
+app.use("/api/v1/users", userRouter)
 
 app.use(errorHandler)
 
