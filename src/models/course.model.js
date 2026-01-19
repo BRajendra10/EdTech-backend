@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import mongooseAggregatePaginate from "mongoose-paginate-v2";
 
 const courseSchema = new Schema(
     {
@@ -30,8 +31,8 @@ const courseSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ["draft", "published", "archived"],
-            default: "draft"
+            enum: ["DRAFT", "PUBLISHED", "UNPUBLISHED"],
+            default: "DRAFT"
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
@@ -47,5 +48,7 @@ const courseSchema = new Schema(
         timestamps: true
     }
 )
+
+courseSchema.plugin(mongooseAggregatePaginate)
 
 export const Course = mongoose.model("Course", courseSchema);

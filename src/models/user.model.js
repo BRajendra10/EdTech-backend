@@ -40,6 +40,10 @@ const userSchema = new Schema(
         refreshToken: {
             type: String
         },
+        refreshTokenExpiryAt: {
+            type: Date,
+            index: true,
+        },
         isBlocked: {
             type: Boolean,
             default: false

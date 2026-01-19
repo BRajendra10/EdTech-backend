@@ -13,16 +13,12 @@ export const uploadOnCloudinary = async (localFilePath, resourceType) => {
 
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: resourceType,
-            folder_name: "EdTech"
+            folder: "EdTech"
         })
 
         fs.unlinkSync(localFilePath);
 
-        return {
-            publicId: response.public_id,
-            url: response.secure_url,
-        }
-
+        return response
     } catch (error) {
         if (fs.existsSync(localFilePath)) {
             fs.unlinkSync(localFilePath);

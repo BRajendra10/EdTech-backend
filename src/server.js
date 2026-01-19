@@ -18,9 +18,11 @@ app.use(cookieParser())
 
 // routes
 import userRouter from "./routes/user.route.js";
+import courseRouter from "./routes/user.route.js";
 
 // route decleration
 app.use("/api/v1/users", userRouter)
+app.use("/api/v1/courses" courseRouter)
 
 app.use(errorHandler)
 
