@@ -278,7 +278,9 @@ const getAllCourses = asyncHandler(async (req, res) => {
 
 // ======================================================================
 
-//TODO: Get single course
+// TODO: Get single course
+// FIXME: While getting all course we are checking if requesting user is STUDENT then only send PUBLISHED course but here while getting course by we are not checking anything that's a bug.
+// ** WE HAVE DECIDE THAT WE WILL PRORTAZIE SECURITY OVER SPEED **
 
 const getCourseById = asyncHandler(async (req, res) => {
     const { courseId } = req.params;
@@ -287,14 +289,20 @@ const getCourseById = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Valid courseId is required !!")
     }
 
-    const course = await Course.findById(courseId).populate([
-        { path: "createdBy", select: "avatar fullName role" },
-        { path: "assignedTo", select: "avatar fullName role" }
-    ]);
+    const course = await Course.findById(courseId);
 
     if (!course) {
         throw new ApiError(404, "No course found !!")
     }
+
+    if(course.status !== "PUBLISHED" && req.user.role === "STUDENT") {
+        throw new ApiError(403, "Your are Forbidden to access this course !!")
+    }
+
+    await course.populate([
+        { path: "createdBy", select: "avatar fullName role" },
+        { path: "assignedTo", select: "avatar fullName role" }
+    ]);
 
     return res.status(200).json(
         new ApiResponse(200, course, "Course fetched successfully.")

@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 
-const lessonSchema = new Schema(
+const LessonSchema = new Schema(
     {
         moduleId: {
             type: Schema.Types.ObjectId,
@@ -20,6 +20,12 @@ const lessonSchema = new Schema(
             type: String,
             required: true,
         },
+        thumbnail: {
+            type: String,
+        },
+        thumbnailPublicId: {
+            type: String,
+        },
         duration: {
             type: Number,
             required: true
@@ -30,11 +36,6 @@ const lessonSchema = new Schema(
         order: {
             type: Number,
             required: true,
-        },
-        createdBy: {
-            type: Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
         }
     },
     {
@@ -42,9 +43,9 @@ const lessonSchema = new Schema(
     }
 )
 
-lessonSchema.index(
+LessonSchema.index(
   { moduleId: 1, order: 1 },
   { unique: true }
 );
 
-export const Lesson = mongoose.model("Lesson", lessonSchema);
+export const Lesson = mongoose.model("Lesson", LessonSchema);

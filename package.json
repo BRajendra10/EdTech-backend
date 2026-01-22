@@ -19,7 +19,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "node src/index.js"
+    "dev": "nodemon node src/index.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -31,8 +31,12 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.2",
+    "mongoose-aggregate-paginate-v2": "^1.1.4",
     "mongoose-paginate-v2": "^1.9.1",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.12"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

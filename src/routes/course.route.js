@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { authorizeRoles } from "../middlewares/authorizeRoles.middleware.js";
+import { authorizeRoles } from "../middlewares/authRole.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
 import {
@@ -30,7 +30,7 @@ router.get(
 
 // Create a new course
 router.post(
-    "/",
+    "/add",
     authorizeRoles("ADMIN", "INSTRUCTOR"),
     upload.single("thumbnail"),
     addCourse

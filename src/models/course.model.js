@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import mongooseAggregatePaginate from "mongoose-paginate-v2";
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const courseSchema = new Schema(
     {
@@ -49,6 +49,6 @@ const courseSchema = new Schema(
     }
 )
 
-courseSchema.plugin(mongooseAggregatePaginate)
+courseSchema.plugin(aggregatePaginate);
 
 export const Course = mongoose.model("Course", courseSchema);

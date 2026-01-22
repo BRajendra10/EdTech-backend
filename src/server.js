@@ -18,11 +18,15 @@ app.use(cookieParser())
 
 // routes
 import userRouter from "./routes/user.route.js";
-import courseRouter from "./routes/user.route.js";
+import courseRouter from "./routes/course.route.js";
+import moduleRouter from "./routes/module.route.js";
+import lessionRouter from "./routes/lession.route.js";
 
 // route decleration
 app.use("/api/v1/users", userRouter)
-app.use("/api/v1/courses" courseRouter)
+app.use("/api/v1/courses", courseRouter)
+app.use("/api/v1/modules", moduleRouter)
+app.use("/api/v1/lessions", lessionRouter)
 
 app.use(errorHandler)
 
