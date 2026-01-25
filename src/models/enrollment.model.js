@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 
 const enrollmentSchema = new Schema(
     {
-        studentId: {
+        userId: {
             type: Schema.Types.ObjectId,
             ref: "User",
         },
@@ -10,15 +10,26 @@ const enrollmentSchema = new Schema(
             type: Schema.Types.ObjectId,
             ref: "Course",
         },
-        completed: {
-            type: Boolean,
-            default: false,
+        status: {
+            type: String,
+            enum: ["ACTIVE", "COMPLETED", "CANCELLED"],
+            required: true,
+            default: "ACTIVE"
         },
+        completedLessons: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Lesson",
+            }
+        ],
         progress: {
             type: Number,
             default: 0,
             min: 0,
-            max: 100
+            max: 100,
+        },
+        completedAt: {
+            type: Date,
         }
     },
     {
@@ -27,7 +38,7 @@ const enrollmentSchema = new Schema(
 )
 
 enrollmentSchema.index(
-    { studentId: 1, courseId: 1 },
+    { userId: 1, courseId: 1 },
     { unique: true }
 );
 
