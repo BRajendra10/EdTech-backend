@@ -10,7 +10,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { sendOtp } from "../utils/nodemailer.js";
 
 import crypto from "crypto";
-
+import jwt from "jsonwebtoken";
 
 const accessTokenOptions = {
     httpOnly: true,
@@ -27,11 +27,25 @@ const refreshTokenOptions = {
 }
 
 // Singup / register new user
+// FIXME: admin singup bug
+// any user can send role admin and do anything in our site
+// restrict admin from signup
+// we will use data seding for default admin only once when backend run first time and no any other user exist in cluster, (because he will be the one who will start doing everything:- adding people adding course managing everything)
+
 const signup = asyncHandler(async (req, res) => {
     const { fullName, email, password, role } = req.body;
 
     if ([fullName, email, password, role].some(f => !f?.trim())) {
         throw new ApiError(400, "All Fileds are required !!")
+    }
+
+    if (role === "ADMIN") {
+        throw new ApiError(403, "You can not singup as admin !!")
+    }
+
+    let status = "ACTIVE";
+    if (role === "INSTRUCTOR") {
+        status = "PENDING";
     }
 
     const existingUser = await User.findOne({ email });
@@ -46,7 +60,7 @@ const signup = asyncHandler(async (req, res) => {
 
     const avatar = await uploadOnCloudinary(avatarLocalPath, "image");
 
-    if (!avatar.url) {
+    if (!avatar.secure_url) {
         throw new ApiError(400, "Somethign went wrong while uploading avatar !!")
     }
 
@@ -55,8 +69,9 @@ const signup = asyncHandler(async (req, res) => {
         email,
         password,
         role,
-        avatar: avatar.url,
-        avatarPublicId: avatar.publicId,
+        status,
+        avatar: avatar.secure_url,
+        avatarPublicId: avatar.public_id,
     })
 
     if (!user) {
@@ -122,7 +137,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
         .cookie("accessToken", accessToken, accessTokenOptions)
         .cookie("refreshToken", refreshToken, refreshTokenOptions)
         .json(
-            new ApiResponse(200, {}, "Email Verified successfully")
+            new ApiResponse(200, user, "Email Verified successfully")
         )
 })
 
@@ -174,17 +189,23 @@ const login = asyncHandler(async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-
     if (!user) {
         throw new ApiError(400, "User doesn't exist !!")
+    }
+
+    if (user.isBlocked) {
+        throw new ApiError(403, "Account blocked by admin");
     }
 
     if (!user.isEmailVerified) {
         throw new ApiError(400, "Please verify your email first");
     }
 
-    const isPasswordValid = await user.isPasswordCorrect(password);
+    if (user.status !== "ACTIVE") {
+        throw new ApiError(401, "Your account is not active !!")
+    }
 
+    const isPasswordValid = await user.isPasswordCorrect(password);
     if (!isPasswordValid) {
         throw new ApiError(400, "Invalid password !!")
     }
@@ -192,8 +213,8 @@ const login = asyncHandler(async (req, res) => {
     const accessToken = await user.generateAccessToken();
     const refreshToken = await user.generateRefreshToken();
 
-    if (!user.refreshExpiryAt || user.refreshExpiryAt < Date.now()) {
-        user.refreshExpiryAt = new Date(
+    if (!user.refreshTokenExpiryAt || user.refreshTokenExpiryAt < Date.now()) {
+        user.refreshTokenExpiryAt = new Date(
             Date.now() + 1000 * 60 * 60 * 24 * 30
         );
     }
@@ -201,12 +222,15 @@ const login = asyncHandler(async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
+    const safeUser = await User.findById(user._id)
+        .select("-password -refreshToken");
+
     return res
         .status(200)
         .cookie("accessToken", accessToken, accessTokenOptions)
         .cookie("refreshToken", refreshToken, refreshTokenOptions)
         .json(
-            new ApiResponse(200, user, "Login successfully")
+            new ApiResponse(200, safeUser, "Login successfully")
         )
 })
 
@@ -240,15 +264,16 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Invalid or expired refresh token");
     }
 
-    const user = await User.findById(decoded._id);
+    const user = await User.findById(decoded._id)
+        .select("-password");
 
     if (!user) {
         throw new ApiError(401, "User not found");
     }
 
-    if (!user.refreshExpiryAt || user.refreshExpiryAt < Date.now()) {
+    if (!user.refreshTokenExpiryAt || user.refreshTokenExpiryAt < Date.now()) {
         user.refreshToken = undefined;
-        user.refreshExpiryAt = undefined;
+        user.refreshTokenExpiryAt = undefined;
 
         throw new ApiError(401, "Session expired. Please login again.");
     }
@@ -261,6 +286,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const refreshToken = await user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
+    user.refreshTokenExpiryAt = new Date(
+        Date.now() + 1000 * 60 * 60 * 24 * 30
+    );
     await user.save();
 
     return res
@@ -318,7 +346,7 @@ const logout = asyncHandler(async (req, res) => {
     // Clear refresh token and absolute expiry in DB
     await User.findByIdAndUpdate(userId, {
         refreshToken: undefined,
-        refreshExpiryAt: undefined
+        refreshTokenExpiryAt: undefined
     });
 
     // Clear cookies

@@ -6,6 +6,7 @@ import {
     changeCurrentPassword, 
     login, 
     logout, 
+    refreshAccessToken, 
     resendVerificationOtp, 
     signup, 
     verifyOtp 
@@ -16,6 +17,7 @@ const router = Router();
 router.route("/signup").post(upload.single("avatar"), signup)
 router.route("/verify-otp").post(verifyOtp)
 router.route("/resend-verification-otp").post(resendVerificationOtp)
+router.route("/refresh-token").post(refreshAccessToken)
 router.route("/login").post(login)
 
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)

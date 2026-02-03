@@ -29,6 +29,11 @@ const userSchema = new Schema(
             type: Boolean,
             default: false,
         },
+        status: {
+            type: String,
+            enum: ["ACTIVE", "PENDING", "SUSPENDED"],
+            required: true,
+        },
         avatar: {
             type: String,
             required: true,
