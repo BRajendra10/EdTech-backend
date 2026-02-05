@@ -325,11 +325,15 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     }
 
     user.password = newPassword;
+    user.refreshToken = undefined;
+    user.refreshTokenExpiryAt = undefined;
     await user.save();
 
-    return res.status(200).json(
-        new ApiResponse(200, {}, "Password updated successfully. Please login again.")
-    );
+    return res
+        .status(200)
+        .clearCookie("accessToken", { httpOnly: true, secure: true, sameSite: "None" })
+        .clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: "None" })
+        .json(new ApiResponse(200, {}, "Password updated successfully."))
 })
 
 // TODO: logout user
