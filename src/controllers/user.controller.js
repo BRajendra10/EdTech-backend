@@ -43,11 +43,6 @@ const signup = asyncHandler(async (req, res) => {
         throw new ApiError(403, "You can not singup as admin !!")
     }
 
-    let status = "ACTIVE";
-    if (role === "INSTRUCTOR") {
-        status = "PENDING";
-    }
-
     const existingUser = await User.findOne({ email });
     if (existingUser) {
         throw new ApiError(400, "User already exist, login !!")
@@ -69,7 +64,7 @@ const signup = asyncHandler(async (req, res) => {
         email,
         password,
         role,
-        status,
+        status: "PENDING",
         avatar: avatar.secure_url,
         avatarPublicId: avatar.public_id,
     })
@@ -92,12 +87,12 @@ const signup = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Failed to set email verification credentials !!")
     }
 
-    const safeUser = await User.findById(user._id).select("-password -refreshToken");
+    const safeUser = await User.findById(user._id);
 
     return res.status(201).json(
         new ApiResponse(201, safeUser, "Verify Email to login in to our system !!")
     )
-})
+});
 
 // Verify OTP
 const verifyOtp = asyncHandler(async (req, res) => {
@@ -122,24 +117,17 @@ const verifyOtp = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid Otp !!")
     }
 
-    const accessToken = await user.generateAccessToken();
-    const refreshToken = await user.generateRefreshToken();
-
     user.isEmailVerified = true;
-    user.refreshToken = refreshToken;
-
     await user.save();
 
     await EmailVerification.deleteMany({ userId: user._id });
 
     return res
         .status(200)
-        .cookie("accessToken", accessToken, accessTokenOptions)
-        .cookie("refreshToken", refreshToken, refreshTokenOptions)
         .json(
             new ApiResponse(200, user, "Email Verified successfully")
         )
-})
+});
 
 // Resend new otp for verification
 const resendVerificationOtp = asyncHandler(async (req, res) => {
@@ -178,7 +166,7 @@ const resendVerificationOtp = asyncHandler(async (req, res) => {
     return res.status(201).json(
         new ApiResponse(201, {}, "Verification OTP resent successfully")
     )
-})
+});
 
 // login
 const login = asyncHandler(async (req, res) => {
@@ -188,21 +176,21 @@ const login = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fileds are required !!")
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
         throw new ApiError(400, "User doesn't exist !!")
     }
 
-    if (user.isBlocked) {
-        throw new ApiError(403, "Account blocked by admin");
+    if (user.status === "SUSPENDED") {
+        throw new ApiError(403, "Account suspended, user can't access resourses !!");
+    }
+
+    if (user.status === "PENDING") {
+        throw new ApiError(401, "Your account is not active !!")
     }
 
     if (!user.isEmailVerified) {
         throw new ApiError(400, "Please verify your email first");
-    }
-
-    if (user.status !== "ACTIVE") {
-        throw new ApiError(401, "Your account is not active !!")
     }
 
     const isPasswordValid = await user.isPasswordCorrect(password);
@@ -232,6 +220,35 @@ const login = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(200, safeUser, "Login successfully")
         )
+});
+
+const updateUserStatus = asyncHandler(async (req, res) => {
+    // user status updatation should be done only admin
+    // required filde userId and status which will come from body
+    // with userId fetch user and validate
+    // if user exist then update it's status otherwise throw error
+    const { userId, status } = req.body;
+
+    if (!userId || !isValidObjectId(userId)) {
+        throw new ApiError(400, "Valid userId is required !!");
+    }
+
+    if (!["ACTIVE", "PENDING", "SUSPENDED"].includes(status)) {
+        throw new ApiError(400, "Invalid status value");
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new ApiError(404, "User not found !!")
+    }
+
+    user.status = status;
+    await user.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, user, "user status updated successfully")
+    )
 })
 
 // TODO: refresh access token
@@ -251,7 +268,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         req.headers.authorization?.replace("Bearer ", "");
 
     if (!incomingRefreshToken) {
-        throw new ApiError(401, "Refresh token missing");
+        throw new ApiError(401, "Refresh token missing, login");
     }
 
     let decoded;
@@ -264,8 +281,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Invalid or expired refresh token");
     }
 
-    const user = await User.findById(decoded._id)
-        .select("-password");
+    const user = await User.findById(decoded._id).select("+refreshToken");
 
     if (!user) {
         throw new ApiError(401, "User not found");
@@ -278,6 +294,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Session expired. Please login again.");
     }
 
+    console.log(incomingRefreshToken, user.refreshToken)
     if (incomingRefreshToken !== user.refreshToken) {
         throw new ApiError(401, "Refresh token mismatch");
     }
@@ -298,7 +315,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(200, {}, "Login successfully")
         )
-})
+});
 
 // TODO: add new password
 // get new and old password
@@ -334,7 +351,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
         .clearCookie("accessToken", { httpOnly: true, secure: true, sameSite: "None" })
         .clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: "None" })
         .json(new ApiResponse(200, {}, "Password updated successfully."))
-})
+});
 
 // TODO: logout user
 // clear refreshtoken and it's expiry in DB
@@ -371,4 +388,5 @@ export {
     refreshAccessToken,
     changeCurrentPassword,
     logout,
+    updateUserStatus,
 }

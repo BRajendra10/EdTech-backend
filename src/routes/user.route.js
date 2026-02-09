@@ -9,6 +9,7 @@ import {
     refreshAccessToken, 
     resendVerificationOtp, 
     signup, 
+    updateUserStatus, 
     verifyOtp 
 } from "../controllers/user.controller.js";
 
@@ -22,5 +23,6 @@ router.route("/login").post(login)
 
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)
 router.route("/logout").post(verifyJWT, logout)
+router.route("/update-user-status").patch(verifyJWT, updateUserStatus)
 
 export default router

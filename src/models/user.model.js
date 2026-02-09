@@ -19,6 +19,7 @@ const userSchema = new Schema(
         password: {
             type: String,
             required: true,
+            select: false,
         },
         role: {
             type: String,
@@ -43,15 +44,12 @@ const userSchema = new Schema(
             required: true,
         },
         refreshToken: {
-            type: String
+            type: String,
+            select: false,
         },
         refreshTokenExpiryAt: {
             type: Date,
             index: true,
-        },
-        isBlocked: {
-            type: Boolean,
-            default: false
         }
     },
     {
