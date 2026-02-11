@@ -1,16 +1,18 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { authorizeRoles } from "../middlewares/authRole.middleware.js"
 
-import { 
-    changeCurrentPassword, 
-    login, 
-    logout, 
-    refreshAccessToken, 
-    resendVerificationOtp, 
-    signup, 
-    updateUserStatus, 
-    verifyOtp 
+import {
+    changeCurrentPassword,
+    getAllUsers,
+    login,
+    logout,
+    refreshAccessToken,
+    resendVerificationOtp,
+    signup,
+    updateUserStatus,
+    verifyOtp
 } from "../controllers/user.controller.js";
 
 const router = Router();
@@ -23,6 +25,7 @@ router.route("/login").post(login)
 
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)
 router.route("/logout").post(verifyJWT, logout)
-router.route("/update-user-status").patch(verifyJWT, updateUserStatus)
+router.route("/update-user-status").patch(verifyJWT, authorizeRoles("ADMIN"), updateUserStatus)
+router.route("/all").get(verifyJWT, authorizeRoles("ADMIN"), getAllUsers)
 
 export default router

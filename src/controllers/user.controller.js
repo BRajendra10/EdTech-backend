@@ -251,6 +251,35 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     )
 })
 
+const getAllUsers = asyncHandler(async (req, res) => {
+    const page = Math.max(parseInt(req.query?.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+
+    const aggregate = User.aggregate([
+        {
+            $project: {
+                password: 0,
+                refreshToken: 0,
+                avatarPublicId: 0,
+            }
+        }
+    ])
+
+    const users = await User.aggregatePaginate(aggregate, {
+        page,
+        limit,
+        sort: { createdAt: -1 }
+    });
+
+    if (!users) {
+        throw new ApiError(400, "somethign went wrong while fetchign users !!")
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, users, "All users fetch successfully")
+    )
+});
+
 // TODO: refresh access token
 // Our access token is saposed to live only for 15 min and after that by using using refresh token backend will refresh access token so user will live untill refres token expires. if refresh token abslute expiry is gone then user will be logout imediatley
 
@@ -294,7 +323,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Session expired. Please login again.");
     }
 
-    console.log(incomingRefreshToken, user.refreshToken)
     if (incomingRefreshToken !== user.refreshToken) {
         throw new ApiError(401, "Refresh token mismatch");
     }
@@ -389,4 +417,5 @@ export {
     changeCurrentPassword,
     logout,
     updateUserStatus,
+    getAllUsers,
 }
