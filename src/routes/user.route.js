@@ -25,7 +25,9 @@ router.route("/login").post(login)
 
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)
 router.route("/logout").post(verifyJWT, logout)
-router.route("/update-user-status").patch(verifyJWT, authorizeRoles("ADMIN"), updateUserStatus)
+router
+  .route("/status/:userId")
+  .patch(verifyJWT, authorizeRoles("ADMIN"), updateUserStatus);
 router.route("/all").get(verifyJWT, authorizeRoles("ADMIN"), getAllUsers)
 
 export default router

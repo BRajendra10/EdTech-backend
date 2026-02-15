@@ -219,20 +219,68 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
 const getAllCourses = asyncHandler(async (req, res) => {
     const page = Math.max(parseInt(req.query?.page) || 1, 1);
     const { role } = req.user;
+    const { status, search } = req.query;
 
-    let matchStage = {}
+    let matchStage = {};
 
-    if(role === "STUDENT") {
-        matchStage = { status: "PUBLISHED" };
+    if (role === "STUDENT") {
+        matchStage.status = "PUBLISHED";
+    }
+
+    if (status && status !== "ALL") {
+        matchStage.status = status;
+    }
+
+    if (search) {
+        matchStage.title = {
+            $regex: search,
+            $options: "i"
+        };
     }
 
     const pipeline = Course.aggregate([
+        { $match: matchStage },
+        { $sort: { createdAt: -1 } },
         {
-            $match: matchStage
+            $lookup: {
+                from: "users",
+                localField: "createdBy",
+                foreignField: "_id",
+                as: "createdBy"
+            }
         },
+        { $unwind: "$createdBy" }
+    ]);
+
+    const result = await Course.aggregatePaginate(pipeline, {
+        page,
+        limit: 20
+    });
+
+    return res.status(200).json(
+        new ApiResponse(200, result, "Courses fetched successfully")
+    );
+});
+
+
+// ======================================================================
+
+// TODO: Get single course
+// FIXME: While getting all course we are checking if requesting user is STUDENT then only send PUBLISHED course but here while getting course by we are not checking anything that's a bug.
+// ** WE HAVE DECIDE THAT WE WILL PRORTAZIE SECURITY OVER SPEED **
+
+const getCourseById = asyncHandler(async (req, res) => {
+    const { courseId } = req.params;
+
+    if (!courseId || !isValidObjectId(courseId)) {
+        throw new ApiError(400, "Valid courseId is required !!")
+    }
+
+    const course = await Course.aggregate([
         {
-            $sort: {
-                createdAt: -1
+            $match: {
+                _id: new mongoose.Types.ObjectId(courseId),
+                ...(req.user.role === "STUDENT" && { status: "PUBLISHED" })
             }
         },
         {
@@ -255,59 +303,44 @@ const getAllCourses = asyncHandler(async (req, res) => {
             }
         },
         {
-            $unwind: {
-                path: "$assignedTo",
-                preserveNullAndEmptyArrays: true
+            $unwind: "$assignedTo"
+        },
+        {
+            $lookup: {
+                from: "modules",
+                localField: "_id",
+                foreignField: "courseId",
+                as: "modules",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "lessons",
+                            localField: "_id",
+                            foreignField: "moduleId",
+                            as: "lessons",
+                        }
+                    }
+                ],
+            }
+        },
+        {
+            $project: {
+                "createdBy.password": 0,
+                "createdBy.refreshToken": 0,
+                "assignedTo.password": 0,
+                "assignedTo.refreshToken": 0,
             }
         }
     ])
 
-    const result = await Course.aggregatePaginate(pipeline, {
-        page: page,
-        limit: 20
-    })
-
-    if (!result.docs.length) {
-        throw new ApiError(400, "No courses are found !!")
+    if (!course.length) {
+        throw new ApiError(404, "No course found or access denied")
     }
-
-    return res.status(200).json(
-        new ApiResponse(200, result, "Courses Fetched successfully")
-    )
-});
-
-// ======================================================================
-
-// TODO: Get single course
-// FIXME: While getting all course we are checking if requesting user is STUDENT then only send PUBLISHED course but here while getting course by we are not checking anything that's a bug.
-// ** WE HAVE DECIDE THAT WE WILL PRORTAZIE SECURITY OVER SPEED **
-
-const getCourseById = asyncHandler(async (req, res) => {
-    const { courseId } = req.params;
-
-    if (!courseId || !isValidObjectId(courseId)) {
-        throw new ApiError(400, "Valid courseId is required !!")
-    }
-
-    const course = await Course.findById(courseId);
-
-    if (!course) {
-        throw new ApiError(404, "No course found !!")
-    }
-
-    if(course.status !== "PUBLISHED" && req.user.role === "STUDENT") {
-        throw new ApiError(403, "Your are Forbidden to access this course !!")
-    }
-
-    await course.populate([
-        { path: "createdBy", select: "avatar fullName role" },
-        { path: "assignedTo", select: "avatar fullName role" }
-    ]);
 
     return res.status(200).json(
         new ApiResponse(200, course, "Course fetched successfully.")
     )
-})
+});
 
 // Get the course id and and validate
 // find the course by id and validate

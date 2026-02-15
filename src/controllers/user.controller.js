@@ -223,15 +223,8 @@ const login = asyncHandler(async (req, res) => {
 });
 
 const updateUserStatus = asyncHandler(async (req, res) => {
-    // user status updatation should be done only admin
-    // required filde userId and status which will come from body
-    // with userId fetch user and validate
-    // if user exist then update it's status otherwise throw error
-    const { userId, status } = req.body;
-
-    if (!userId || !isValidObjectId(userId)) {
-        throw new ApiError(400, "Valid userId is required !!");
-    }
+    const { userId } = req.params;
+    const { status } = req.body;
 
     if (!["ACTIVE", "PENDING", "SUSPENDED"].includes(status)) {
         throw new ApiError(400, "Invalid status value");
@@ -240,22 +233,62 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
-        throw new ApiError(404, "User not found !!")
+        throw new ApiError(404, "User not found");
+    }
+
+    // Prevent admin self-suspension
+    if (req.user._id.toString() === userId) {
+        throw new ApiError(400, "You cannot change your own status");
     }
 
     user.status = status;
     await user.save();
 
     return res.status(200).json(
-        new ApiResponse(200, user, "user status updated successfully")
-    )
-})
+        new ApiResponse(200, user, "User status updated successfully")
+    );
+});
+
 
 const getAllUsers = asyncHandler(async (req, res) => {
     const page = Math.max(parseInt(req.query?.page) || 1, 1);
-    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const limit = Math.min(parseInt(req.query?.limit) || 10, 50);
+
+    const { role, status, search } = req.query;
+
+    let matchStage = {};
+
+    // Role filter
+    if (role && role !== "ALL") {
+        matchStage.role = role;
+    }
+
+    // Status filter
+    if (status && status !== "ALL") {
+        matchStage.status = status;
+    }
+
+    // Search filter (name OR email)
+    if (search) {
+        matchStage.$or = [
+            {
+                fullName: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+            {
+                email: {
+                    $regex: search,
+                    $options: "i"
+                }
+            }
+        ];
+    }
 
     const aggregate = User.aggregate([
+        { $match: matchStage },
+        { $sort: { createdAt: -1 } },
         {
             $project: {
                 password: 0,
@@ -263,22 +296,18 @@ const getAllUsers = asyncHandler(async (req, res) => {
                 avatarPublicId: 0,
             }
         }
-    ])
+    ]);
 
     const users = await User.aggregatePaginate(aggregate, {
         page,
-        limit,
-        sort: { createdAt: -1 }
+        limit
     });
 
-    if (!users) {
-        throw new ApiError(400, "somethign went wrong while fetchign users !!")
-    }
-
     return res.status(200).json(
-        new ApiResponse(200, users, "All users fetch successfully")
-    )
+        new ApiResponse(200, users, "All users fetched successfully")
+    );
 });
+
 
 // TODO: refresh access token
 // Our access token is saposed to live only for 15 min and after that by using using refresh token backend will refresh access token so user will live untill refres token expires. if refresh token abslute expiry is gone then user will be logout imediatley
@@ -358,7 +387,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Current and new passwords are required");
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select("+password");
 
     if (!user) {
         throw new ApiError(404, "User not found");
