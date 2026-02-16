@@ -27,7 +27,7 @@ import enrollmentRouter from "./routes/enrollment.routes.js";
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/courses", courseRouter)
 app.use("/api/v1/modules", moduleRouter)
-app.use("/api/v1/lessions", lessionRouter)
+app.use("/api/v1/lessons", lessionRouter)
 app.use("/api/v1/enrollments", enrollmentRouter)
 
 app.use(errorHandler)

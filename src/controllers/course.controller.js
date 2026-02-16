@@ -19,7 +19,7 @@ import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js
 // Return the response
 
 const addCourse = asyncHandler(async (req, res) => {
-    const { title, description } = req.body;
+    const { title, description, price, isFree, status } = req.body;
 
     if (!title || !description) {
         throw new ApiError(400, "All Fildes are required !!")
@@ -29,6 +29,10 @@ const addCourse = asyncHandler(async (req, res) => {
 
     if (existingCourse) {
         throw new ApiError(409, "Course already exist !!")
+    }
+
+    if (!req.file?.path) {
+        throw new ApiError(400, "Thumbnail image is required !!");
     }
 
     const thumbnailLocalPath = req.file?.path;
@@ -43,9 +47,9 @@ const addCourse = asyncHandler(async (req, res) => {
         description,
         thumbnail: imageFile.secure_url,
         thumbnailPublicId: imageFile.public_id,
-        isFree: true,
-        price: 0,
-        status: "DRAFT",
+        isFree: isFree,
+        price: price,
+        status: status,
         createdBy: req.user._id
     })
 
@@ -60,7 +64,7 @@ const addCourse = asyncHandler(async (req, res) => {
     return res.status(201).json(
         new ApiResponse(201, newCourse, "New course added successfully.")
     )
-})
+});
 
 // ===================================================================
 
@@ -106,7 +110,7 @@ const assignCourse = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(200, course, "Course assigned successfully.")
     )
-})
+});
 
 // =================================================================
 
@@ -276,12 +280,17 @@ const getCourseById = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Valid courseId is required !!")
     }
 
+    const matchStage = {
+        _id: new mongoose.Types.ObjectId(courseId),
+    };
+
+    if (req.user.role === "STUDENT") {
+        matchStage.status = "PUBLISHED";
+    }
+
     const course = await Course.aggregate([
         {
-            $match: {
-                _id: new mongoose.Types.ObjectId(courseId),
-                ...(req.user.role === "STUDENT" && { status: "PUBLISHED" })
-            }
+            $match: matchStage,
         },
         {
             $lookup: {
@@ -292,7 +301,10 @@ const getCourseById = asyncHandler(async (req, res) => {
             }
         },
         {
-            $unwind: "$createdBy"
+            $unwind: {
+                path: "$createdBy",
+                preserveNullAndEmptyArrays: true
+            }
         },
         {
             $lookup: {
@@ -303,7 +315,10 @@ const getCourseById = asyncHandler(async (req, res) => {
             }
         },
         {
-            $unwind: "$assignedTo"
+            $unwind: {
+                path: "$assignedTo",
+                preserveNullAndEmptyArrays: true
+            }
         },
         {
             $lookup: {
