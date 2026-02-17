@@ -186,11 +186,14 @@ This project is intentionally designed to scale:
 
 Made by **Rajendra Behera**
 
-**Email:** [rajendrabehera8116@gmail.com](mailto:rajendrabehera8116@gmail.com)
-**LinkedIn:** [/behera-rajendra](https://www.linkedin.com/in/behera-rajendra/)
+**Email:** [rajendrabehera8116@gmail.com](mailto:rajendrabehera8116@gmail.com)  
+**LinkedIn:** [/behera-rajendra](https://www.linkedin.com/in/behera-rajendra/)  
 **GitHub:** [/BRajendra10](https://github.com/BRajendra10)
 
-**Frontend** [/EdTech-frontend](https://github.com/BRajendra10/EdTech-fronted)
-**Backend** [/EdTech-backend](https://github.com/BRajendra10/EdTech-backend)
-**Priview** [Drive link](https://drive.google.com/file/d/1zXOpIP9RiClN1xvF_3alwe3NP_GN4pad/view?usp=drivesdk) 
+**Frontend:** 
+[/EdTech-frontend](https://github.com/BRajendra10/EdTech-fronted)  
+**Backend:** 
+[/EdTech-backend](https://github.com/BRajendra10/EdTech-backend)  
+**Priview:** 
+[Drive link](https://drive.google.com/file/d/1zXOpIP9RiClN1xvF_3alwe3NP_GN4pad/view?usp=drivesdk) 
 ---
