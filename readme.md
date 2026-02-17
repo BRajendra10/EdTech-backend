@@ -192,5 +192,5 @@ Made by **Rajendra Behera**
 
 **Frontend** [/EdTech-frontend](https://github.com/BRajendra10/EdTech-fronted)
 **Backend** [/EdTech-backend](https://github.com/BRajendra10/EdTech-backend)
-
+**Priview** [Drive link](https://drive.google.com/file/d/1zXOpIP9RiClN1xvF_3alwe3NP_GN4pad/view?usp=drivesdk) 
 ---
