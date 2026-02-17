@@ -137,9 +137,7 @@ backend/
 │   └── asyncHandler.js
 │
 ├── routes/             # API route definitions
-│
 ├── db/                 # MongoDB connection
-│
 ├── server.js           # Express app configuration
 └── index.js            # Server bootstrap
 ```
@@ -167,17 +165,32 @@ This project is intentionally designed to scale:
   * New roles
   * New LMS features (quizzes, certificates, payments)
   * New APIs
+
 * Clean separation of concerns
+
 * Consistent patterns across controllers, models, and routes
 
 ---
 
 ## 📌 Status
 
-✅ User Management  
-✅ Course Management  
-✅ Modules & Lessons  
-✅ Enrollment System  
+✅ User Management
+✅ Course Management
+✅ Modules & Lessons
+✅ Enrollment System
 ✅ Role-Based Access Control
+
+---
+
+## ❤️ Links / Contact
+
+Made by **Rajendra Behera**
+
+**Email:** [rajendrabehera8116@gmail.com](mailto:rajendrabehera8116@gmail.com)
+**LinkedIn:** [/behera-rajendra](https://www.linkedin.com/in/behera-rajendra/)
+**GitHub:** [/BRajendra10](https://github.com/BRajendra10)
+
+**Frontend** [/EdTech-frontend](https://github.com/BRajendra10/EdTech-frontend)
+**Backend** [/EdTech-backend](https://github.com/BRajendra10/EdTech-backend)
 
 ---
