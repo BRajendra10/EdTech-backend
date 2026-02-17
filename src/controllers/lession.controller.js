@@ -163,7 +163,7 @@ const updateLession = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(200, lesson, "Lesson updated successfully")
     );
-})
+});
 
 // TODO: Delete lession
 // get lessonId and validate
