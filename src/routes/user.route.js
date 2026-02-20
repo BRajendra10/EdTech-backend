@@ -22,12 +22,12 @@ router.route("/verify-otp").post(verifyOtp)
 router.route("/resend-verification-otp").post(resendVerificationOtp)
 router.route("/refresh-token").post(refreshAccessToken)
 router.route("/login").post(login)
-
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)
 router.route("/logout").post(verifyJWT, logout)
-router
-  .route("/status/:userId")
-  .patch(verifyJWT, authorizeRoles("ADMIN"), updateUserStatus);
+
+// ==================================================
+
+router.route("/status/:userId").patch(verifyJWT, authorizeRoles("ADMIN"), updateUserStatus);
 router.route("/all").get(verifyJWT, authorizeRoles("ADMIN"), getAllUsers)
 
 export default router

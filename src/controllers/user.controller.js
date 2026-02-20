@@ -26,12 +26,6 @@ const refreshTokenOptions = {
     maxAge: 1000 * 60 * 60 * 24 * 15
 }
 
-// Singup / register new user
-// FIXME: admin singup bug
-// any user can send role admin and do anything in our site
-// restrict admin from signup
-// we will use data seding for default admin only once when backend run first time and no any other user exist in cluster, (because he will be the one who will start doing everything:- adding people adding course managing everything)
-
 const signup = asyncHandler(async (req, res) => {
     const { fullName, email, password, role } = req.body;
 
@@ -81,29 +75,30 @@ const signup = asyncHandler(async (req, res) => {
         userId: user?._id,
     })
 
-    await sendOtp(email, code);
+    await sendOtp(email, code, "Email Verification");
 
     if (!verificationDataset) {
         throw new ApiError(400, "Failed to set email verification credentials !!")
     }
 
-    const safeUser = await User.findById(user._id);
-
     return res.status(201).json(
-        new ApiResponse(201, safeUser, "Verify Email to login in to our system !!")
+        new ApiResponse(201, {}, "Verify Email to login in to our system !!")
     )
 });
 
-// Verify OTP
 const verifyOtp = asyncHandler(async (req, res) => {
-    const { verificationCode, userId } = req.body;
+    const { verificationCode, email } = req.body;
 
-    if (!verificationCode || !userId) {
-        throw new ApiError(400, "Verification code is required !!")
+    if (!verificationCode || !email) {
+        throw new ApiError(400, "All fileds are required !!")
     }
 
-    const verificationDataset = await EmailVerification.findOne({ userId });
-    const user = await User.findById(userId);
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw new ApiError(400, "User doesn't exist !!");
+    }
+
+    const verificationDataset = await EmailVerification.findOne({ userId: user?._id });
 
     if (!verificationDataset) {
         throw new ApiError(400, "Invalid or expired OTP !!")
@@ -111,7 +106,6 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
     const isVerified =
         verificationDataset.verificationCode === verificationCode.toString().trim();
-
 
     if (!isVerified) {
         throw new ApiError(400, "Invalid Otp !!")
@@ -129,32 +123,31 @@ const verifyOtp = asyncHandler(async (req, res) => {
         )
 });
 
-// Resend new otp for verification
 const resendVerificationOtp = asyncHandler(async (req, res) => {
-    const { userId } = req.body;
+    const { email } = req.body;
 
-    if (!userId || !isValidObjectId(userId)) {
-        throw new ApiError(400, "Valid userId is required !!")
+    if (!email) {
+        throw new ApiError(400, "email is required !!")
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findOne({ email });
 
     if (!user) {
-        throw new ApiError(400, "User doesn't exist with this userId !!")
+        throw new ApiError(400, "Users doesn't exist !!")
     }
 
     if (user.isEmailVerified) {
-        throw new ApiError(400, "Your email is already verified, you can explore our site.")
+        throw new ApiError(400, "Your email is already verified, now login to explore our site.")
     }
 
-    await EmailVerification.deleteMany({ userId });
+    await EmailVerification.deleteMany({ userId: user?._id });
 
     const code = crypto.randomInt(100000, 1000000).toString();
 
     const verificationDataset = await EmailVerification.create({
         verificationCode: code,
         expiredAt: Date.now() + 1000 * 60 * 5, // 2 minutes
-        userId,
+        userId: user?._id,
     });
 
     if (!verificationDataset) {
@@ -168,7 +161,6 @@ const resendVerificationOtp = asyncHandler(async (req, res) => {
     )
 });
 
-// login
 const login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
@@ -221,104 +213,6 @@ const login = asyncHandler(async (req, res) => {
             new ApiResponse(200, safeUser, "Login successfully")
         )
 });
-
-const updateUserStatus = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const { status } = req.body;
-
-    if (!["ACTIVE", "PENDING", "SUSPENDED"].includes(status)) {
-        throw new ApiError(400, "Invalid status value");
-    }
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-        throw new ApiError(404, "User not found");
-    }
-
-    // Prevent admin self-suspension
-    if (req.user._id.toString() === userId) {
-        throw new ApiError(400, "You cannot change your own status");
-    }
-
-    user.status = status;
-    await user.save();
-
-    return res.status(200).json(
-        new ApiResponse(200, user, "User status updated successfully")
-    );
-});
-
-
-const getAllUsers = asyncHandler(async (req, res) => {
-    const page = Math.max(parseInt(req.query?.page) || 1, 1);
-    const limit = Math.min(parseInt(req.query?.limit) || 10, 50);
-
-    const { role, status, search } = req.query;
-
-    let matchStage = {};
-
-    // Role filter
-    if (role && role !== "ALL") {
-        matchStage.role = role;
-    }
-
-    // Status filter
-    if (status && status !== "ALL") {
-        matchStage.status = status;
-    }
-
-    // Search filter (name OR email)
-    if (search) {
-        matchStage.$or = [
-            {
-                fullName: {
-                    $regex: search,
-                    $options: "i"
-                }
-            },
-            {
-                email: {
-                    $regex: search,
-                    $options: "i"
-                }
-            }
-        ];
-    }
-
-    const aggregate = User.aggregate([
-        { $match: matchStage },
-        { $sort: { createdAt: -1 } },
-        {
-            $project: {
-                password: 0,
-                refreshToken: 0,
-                avatarPublicId: 0,
-            }
-        }
-    ]);
-
-    const users = await User.aggregatePaginate(aggregate, {
-        page,
-        limit
-    });
-
-    return res.status(200).json(
-        new ApiResponse(200, users, "All users fetched successfully")
-    );
-});
-
-
-// TODO: refresh access token
-// Our access token is saposed to live only for 15 min and after that by using using refresh token backend will refresh access token so user will live untill refres token expires. if refresh token abslute expiry is gone then user will be logout imediatley
-
-// get refreshtoken and verify 
-// using _id which we have stored in refresh token get our user from db
-// validate user
-// check if refreshToken absolute expiry hs gone or not ----
-// generate accessToken                                     |
-// send cookies and response                                |
-// Other wise logout user <---------------------------------
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken =
@@ -374,11 +268,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
 });
 
-// TODO: add new password
-// get new and old password
-// get our current user with req.user?._id nad validate currentpassword 
-// now set new password and return the response
-
 const changeCurrentPassword = asyncHandler(async (req, res) => {
     const userId = req.user?._id;
     const { currentPassword, newPassword } = req.body;
@@ -410,10 +299,6 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "Password updated successfully."))
 });
 
-// TODO: logout user
-// clear refreshtoken and it's expiry in DB
-// clear sessions
-
 const logout = asyncHandler(async (req, res) => {
     const userId = req.user?._id;
 
@@ -433,6 +318,90 @@ const logout = asyncHandler(async (req, res) => {
 
     return res.status(200).json(
         new ApiResponse(200, {}, "Logged out successfully")
+    );
+});
+
+// ==================================================
+
+const updateUserStatus = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const { status } = req.body;
+
+    if (!["ACTIVE", "PENDING", "SUSPENDED"].includes(status)) {
+        throw new ApiError(400, "Invalid status value");
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    // Prevent admin self-suspension
+    if (req.user._id.toString() === userId) {
+        throw new ApiError(400, "You cannot change your own status");
+    }
+
+    user.status = status;
+    await user.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, user, "User status updated successfully")
+    );
+});
+
+const getAllUsers = asyncHandler(async (req, res) => {
+    const page = Math.max(parseInt(req.query?.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query?.limit) || 10, 50);
+
+    const { role, status, search } = req.query;
+
+    let matchStage = {};
+
+    if (role && role !== "ALL") {
+        matchStage.role = role;
+    }
+
+    if (status && status !== "ALL") {
+        matchStage.status = status;
+    }
+
+    if (search) {
+        matchStage.$or = [
+            {
+                fullName: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+            {
+                email: {
+                    $regex: search,
+                    $options: "i"
+                }
+            }
+        ];
+    }
+
+    const aggregate = User.aggregate([
+        { $match: matchStage },
+        { $sort: { createdAt: -1 } },
+        {
+            $project: {
+                password: 0,
+                refreshToken: 0,
+                avatarPublicId: 0,
+            }
+        }
+    ]);
+
+    const users = await User.aggregatePaginate(aggregate, {
+        page,
+        limit
+    });
+
+    return res.status(200).json(
+        new ApiResponse(200, users, "All users fetched successfully")
     );
 });
 

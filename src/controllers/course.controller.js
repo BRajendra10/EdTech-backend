@@ -8,20 +8,10 @@ import { Course } from "../models/course.model.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 
-//TODO: Add new course
-
-// First Check who is trying to create course(admin or instructor), student can't create course.
-// validate all the fildes required for a course.
-// upload video and thumbnail to cloudinary.
-// set video and thumbnail with it's public id.
-// CreatedBy will be our curent user(we already check that what role our curent user has).
-// ** At this point we have course: title, description, video, thumbnail, video and thumbnail public ID(Cloudinary), by default we are making course free with no price, status by default will be draft. createdBy: who created course. **
-// Return the response
-
 const addCourse = asyncHandler(async (req, res) => {
     const { title, description, price, isFree, status } = req.body;
 
-    if (!title || !description) {
+    if (!title || !description || !price || !status) {
         throw new ApiError(400, "All Fildes are required !!")
     }
 
@@ -29,6 +19,19 @@ const addCourse = asyncHandler(async (req, res) => {
 
     if (existingCourse) {
         throw new ApiError(409, "Course already exist !!")
+    }
+
+    const course = {
+        title,
+        description,
+        price,
+        isFree,
+        status,
+        createdBy: req.user._id
+    }
+
+    if(req.user.role === "INSTRUCTOR") {
+        course.assignedTo = req.user._id;
     }
 
     if (!req.file?.path) {
@@ -43,14 +46,9 @@ const addCourse = asyncHandler(async (req, res) => {
     }
 
     const newCourse = await Course.create({
-        title,
-        description,
+        ...course,
         thumbnail: imageFile.secure_url,
         thumbnailPublicId: imageFile.public_id,
-        isFree: isFree,
-        price: price,
-        status: status,
-        createdBy: req.user._id
     })
 
     if (!newCourse) {
@@ -66,18 +64,6 @@ const addCourse = asyncHandler(async (req, res) => {
     )
 });
 
-// ===================================================================
-
-//TODO: Assign course to instructor
-
-// --> Course assigning:- every course first time created will be draft then if it's instructor created he will assign himself and it's admin either can aissign himself or assign to instroctor, but instroctor can't assign course to admin.
-
-// Course first created then assigned to either himself(only admin or instructor) or someone(only admin or instructor).
-
-// First get course id and validate
-// Assign course
-// return response
-
 const assignCourse = asyncHandler(async (req, res) => {
     const { courseId, userId } = req.body;
 
@@ -92,7 +78,7 @@ const assignCourse = asyncHandler(async (req, res) => {
     const course = await Course.findById(courseId);
 
     if (!course) {
-        throw new ApiError(400, "Course with this id doesn't exist !!")
+        throw new ApiError(400, "Course doesn't exist !!")
     }
 
     if (course?.assignedTo) {
@@ -111,16 +97,6 @@ const assignCourse = asyncHandler(async (req, res) => {
         new ApiResponse(200, course, "Course assigned successfully.")
     )
 });
-
-// =================================================================
-
-//TODO: Update course
-
-// Fileds to update:- title, description, thumbnail
-// validate fildes
-// upload thumbanila and get
-// update course data
-// return response
 
 const updateCourse = asyncHandler(async (req, res) => {
     const { courseId } = req.body;
@@ -168,13 +144,6 @@ const updateCourse = asyncHandler(async (req, res) => {
     )
 });
 
-// =================================================================
-
-//TODO: Update course status
-
-// only one filde to update status
-// get status filde and update
-
 const updateCourseStatus = asyncHandler(async (req, res) => {
     const { courseId, status } = req.body;
 
@@ -204,21 +173,7 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(200, course, "Course status updated successfully.")
     )
-})
-
-// ====================================================================
-
-// TODO: Get All Course
-// NOTE: When gettign all the course there can be multiple so we need pagination
-
-// First get get page number and validate
-// Create aggrigation pipeline without awating
-// use mongoose agrrigate pagginate npm package for executing pipline with pagination
-// then validate and return data
-
-// FIXME: Not every one can access every course (FIXED)
-// student can't access DRAFT and UNPUBLISHED course, student can only access to published and courses that he has enrolled in
-// admin and instructor can access all courses
+});
 
 const getAllCourses = asyncHandler(async (req, res) => {
     const page = Math.max(parseInt(req.query?.page) || 1, 1);
@@ -265,13 +220,6 @@ const getAllCourses = asyncHandler(async (req, res) => {
         new ApiResponse(200, result, "Courses fetched successfully")
     );
 });
-
-
-// ======================================================================
-
-// TODO: Get single course
-// FIXME: While getting all course we are checking if requesting user is STUDENT then only send PUBLISHED course but here while getting course by we are not checking anything that's a bug.
-// ** WE HAVE DECIDE THAT WE WILL PRORTAZIE SECURITY OVER SPEED **
 
 const getCourseById = asyncHandler(async (req, res) => {
     const { courseId } = req.params;
@@ -356,11 +304,6 @@ const getCourseById = asyncHandler(async (req, res) => {
         new ApiResponse(200, course, "Course fetched successfully.")
     )
 });
-
-// Get the course id and and validate
-// find the course by id and validate
-// puplate createdBy and assignedTo filde
-// return the response
 
 export {
     addCourse,

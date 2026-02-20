@@ -20,12 +20,6 @@ const LessonSchema = new Schema(
             type: String,
             required: true,
         },
-        thumbnail: {
-            type: String,
-        },
-        thumbnailPublicId: {
-            type: String,
-        },
         duration: {
             type: Number,
             required: true
