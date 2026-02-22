@@ -11,7 +11,7 @@ import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js
 const addCourse = asyncHandler(async (req, res) => {
     const { title, description, price, isFree, status } = req.body;
 
-    if (!title || !description || !price || !status) {
+    if (!title || !description || !status) {
         throw new ApiError(400, "All Fildes are required !!")
     }
 

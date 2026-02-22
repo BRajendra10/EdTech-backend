@@ -5,20 +5,40 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { Enrollment } from "../models/enrollment.model.js";
 import { Course } from "../models/course.model.js";
 
-// TODO: Enroll user into a course
-// 
-// Get all the required fildes(userId, courseId) and validate
-//
-// NOTE: In Initial state:
-//  * we will store userID and courseId
-//  * Status will be set by default / we will set to ACTIVE
-//  * Progress will also set to default(0) / we will set to 0
-//  * completedAt and completedLessons will be empty
-//
-// Check if courseId is valid and enrolling course should be pubslihed not anything else.
-// Check if any enrollment exist with same userId and courseId
-// Then create one
+const GetEnrollments = asyncHandler(async (req, res) => {
+    const { role, _id } = req.user;
 
+    let enrollments;
+
+    if (role === "STUDENT") {
+        // Student: Fetch only their own enrollments
+        enrollments = await Enrollment.find({ userId: _id })
+            .populate({
+                path: "courseId",
+                select: "title thumbnail description price isFree status"
+            })
+            .sort({ createdAt: -1 });
+    } else {
+        // Admin/Instructor: Fetch all enrollments in the system
+        enrollments = await Enrollment.find({})
+            .populate({
+                path: "userId",
+                select: "fullName email avatar"
+            })
+            .populate({
+                path: "courseId",
+                select: "title thumbnail"
+            })
+            .sort({ createdAt: -1 });
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, enrollments, "Enrollments fetched successfully")
+    );
+});
+
+
+// TODO: Enroll user into a course
 const EnrollNewUser = asyncHandler(async (req, res) => {
     const { courseId } = req.params;
     const userId = req.user?._id;
@@ -63,13 +83,6 @@ const EnrollNewUser = asyncHandler(async (req, res) => {
 
 
 // TODO: Users list's enrolled in course
-//
-// First get courseId an validate
-// Create a aggrigation pipeline
-// Get all enrollment
-// lookup for user with userId
-// Validate Then return full list with enrollment details, user populate details
-
 const GetEnrolledStudents = asyncHandler(async (req, res) => {
     const { courseId } = req.params;
 
@@ -124,15 +137,6 @@ const GetEnrolledStudents = asyncHandler(async (req, res) => {
     );
 })
 
-// TODO: Update enrollment status
-//
-// NOTE: Enrollment status update is not easy
-//
-//  * STUDENT user can only send ACTIVE status while enrollment and COMPLETED when course completed
-//  * ADMIN OR INSTRUCTOR can send CANCELLED status for specific user
-//
-// FIXME:  ** On Status ACTIVE and COMPLETED userId represent our student but when status is CANCELLED userId should indected student but we are doing req.user._id which leed us to admin and it's critical bug. Solution is to create seperate controller function one for student who will send ACTIVE and COMPLETED and second for ADMIN and INSTRUCTOR who will send CANCELLED, this way it will be easy to add role based access/ ristriction **
-
 // Cancel Enrollment function
 const CancelEnrollment = asyncHandler(async (req, res) => {
     const { userId, courseId } = req.body;
@@ -182,8 +186,9 @@ const UpdateEnrollmentStatus = asyncHandler(async (req, res) => {
 });
 
 
-export { 
-    EnrollNewUser, 
+export {
+    GetEnrollments,
+    EnrollNewUser,
     GetEnrolledStudents,
     CancelEnrollment,
     UpdateEnrollmentStatus

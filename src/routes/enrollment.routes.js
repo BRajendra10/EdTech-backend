@@ -3,7 +3,8 @@ import {
     EnrollNewUser,
     GetEnrolledStudents,
     CancelEnrollment,
-    UpdateEnrollmentStatus
+    UpdateEnrollmentStatus,
+    GetEnrollments
 } from "../controllers/enrollment.controller.js";
 
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -16,6 +17,14 @@ const router = Router();
  * STUDENT ROUTES
  * ============================
  */
+
+// Get enrollments (Role-based: Student gets own, Admin gets all)
+router.get(
+    "/", 
+    verifyJWT, 
+    GetEnrollments
+);
+
 
 // Enroll into a course
 router.post(
