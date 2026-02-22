@@ -37,7 +37,6 @@ const GetEnrollments = asyncHandler(async (req, res) => {
     );
 });
 
-
 // TODO: Enroll user into a course
 const EnrollNewUser = asyncHandler(async (req, res) => {
     const { courseId } = req.params;

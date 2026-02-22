@@ -5,14 +5,17 @@ import { authorizeRoles } from "../middlewares/authRole.middleware.js"
 
 import {
     changeCurrentPassword,
+    forgotPassword,
     getAllUsers,
     login,
     logout,
     refreshAccessToken,
     resendVerificationOtp,
+    resetPassword,
     signup,
     updateUserStatus,
-    verifyOtp
+    verifyOtp,
+    verifyResetOtp
 } from "../controllers/user.controller.js";
 
 const router = Router();
@@ -24,6 +27,10 @@ router.route("/refresh-token").post(refreshAccessToken)
 router.route("/login").post(login)
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)
 router.route("/logout").post(verifyJWT, logout)
+
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-reset-otp", verifyResetOtp);
+router.post("/reset-password", resetPassword);
 
 // ==================================================
 

@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 
 import { User } from "../models/user.model.js";
 import { EmailVerification } from "../models/emailVerification.model.js";
+import { PasswordReset } from "../models/passwordReset.model.js";
 
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { sendOtp } from "../utils/nodemailer.js";
@@ -405,6 +406,121 @@ const getAllUsers = asyncHandler(async (req, res) => {
     );
 });
 
+const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        throw new ApiError(400, "Email is required");
+    }
+
+    const user = await User.findOne({ email });
+
+    // Always return success (do not reveal existence)
+    if (!user) {
+        return res.status(200).json(
+            new ApiResponse(200, {}, "If account exists, OTP sent to email")
+        );
+    }
+
+    // Delete previous reset requests
+    await PasswordReset.deleteMany({ userId: user._id });
+
+    const otp = crypto.randomInt(100000, 1000000).toString();
+
+    const hashedOtp = crypto
+        .createHash("sha256")
+        .update(otp)
+        .digest("hex");
+
+    await PasswordReset.create({
+        userId: user._id,
+        hashedOtp,
+        expiresAt: Date.now() + 1000 * 60 * 10, // 10 minutes
+    });
+
+    await sendOtp(user.email, otp, "Password Reset");
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "If account exists, OTP sent to email")
+    );
+});
+
+const verifyResetOtp = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw new ApiError(400, "Invalid OTP");
+    }
+
+    const resetData = await PasswordReset.findOne({ userId: user._id });
+
+    if (!resetData) {
+        throw new ApiError(400, "OTP expired or invalid");
+    }
+
+    if (resetData.expiresAt < Date.now()) {
+        await PasswordReset.deleteMany({ userId: user._id });
+        throw new ApiError(400, "OTP expired");
+    }
+
+    if (resetData.attempts >= 5) {
+        throw new ApiError(400, "Too many attempts");
+    }
+
+    const hashedOtp = crypto
+        .createHash("sha256")
+        .update(otp)
+        .digest("hex");
+
+    if (hashedOtp !== resetData.hashedOtp) {
+        resetData.attempts += 1;
+        await resetData.save();
+        throw new ApiError(400, "Invalid OTP");
+    }
+
+    resetData.isVerified = true;
+    await resetData.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "OTP verified")
+    );
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    const resetData = await PasswordReset.findOne({ userId: user._id });
+
+    if (!resetData || !resetData.isVerified) {
+        throw new ApiError(400, "Unauthorized request");
+    }
+
+    user.password = newPassword;
+    user.refreshToken = undefined;
+    user.refreshTokenExpiryAt = undefined;
+    await user.save();
+
+    await PasswordReset.deleteMany({ userId: user._id });
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Password reset successfully")
+    );
+});
+
 
 export {
     signup,
@@ -416,4 +532,7 @@ export {
     logout,
     updateUserStatus,
     getAllUsers,
+    forgotPassword,
+    verifyResetOtp,
+    resetPassword
 }
