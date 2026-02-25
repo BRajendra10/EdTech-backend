@@ -6,10 +6,11 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { Course } from "../models/course.model.js";
 
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import { notifyAdminDashboard } from "../utils/dashboardNotifier.js";
 
 
 const addCourse = asyncHandler(async (req, res) => {
-    const { title, description, price, isFree, status } = req.body;
+    const { title, description, price, isFree   , status } = req.body;
 
     if (!title || !description || !status) {
         throw new ApiError(400, "All Fildes are required !!")
@@ -57,6 +58,7 @@ const addCourse = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Somethign went wrong while creating a new course !!")
     }
 
+    notifyAdminDashboard();
     await newCourse.populate("createdBy", "avatar fullName role")
 
     return res.status(201).json(
@@ -163,7 +165,8 @@ const updateCourseStatus = asyncHandler(async (req, res) => {
 
     course.status = status;
     await course.save();
-
+    notifyAdminDashboard();
+    
     await course.populate([
         { path: "createdBy", select: "avatar fullName role" },
         { path: "assignedTo", select: "avatar fullName role" }

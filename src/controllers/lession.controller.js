@@ -6,6 +6,7 @@ import { Module } from "../models/module.model.js";
 import { Lesson } from "../models/lession.model.js";
 
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import { notifyAdminDashboard } from "../utils/dashboardNotifier.js";
 
 // TODO: Add lession
 // get all the fildes(moduelId title description order resources video thumbnail) and validate
@@ -79,6 +80,8 @@ const addLession = asyncHandler(async (req, res) => {
         thumbnail: thumbnailUpload?.secure_url,
         thumbnailPublicId: thumbnailUpload?.public_id,
     });
+
+    notifyAdminDashboard();
 
     return res.status(201).json(
         new ApiResponse(201, lesson, "Lesson created successfully.")
@@ -201,6 +204,7 @@ const deleteLession = asyncHandler(async (req, res) => {
     }
 
     await lesson.deleteOne();
+    notifyAdminDashboard();
 
     return res.status(200).json(
         new ApiResponse(200, null, "Lesson deleted successfully")

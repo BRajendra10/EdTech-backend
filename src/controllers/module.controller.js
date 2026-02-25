@@ -4,6 +4,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Module } from "../models/module.model.js";
 import { Course } from "../models/course.model.js";
+import { notifyAdminDashboard } from "../utils/dashboardNotifier.js";
 
 // TODO: Create a module
 // Get the course id which you want to create a module for
@@ -52,6 +53,8 @@ const addModule = asyncHandler(async (req, res) => {
         description,
         order
     });
+
+    notifyAdminDashboard();
 
     return res.status(201).json(
         new ApiResponse(201, module, "Module created successfully.")
@@ -141,6 +144,7 @@ const deleteModule = asyncHandler(async (req, res) => {
     }
 
     await module.deleteOne();
+    notifyAdminDashboard();
 
     return res.status(200).json(
         new ApiResponse(200, null, "Module deleted successfully.")

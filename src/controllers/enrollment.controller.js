@@ -4,6 +4,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Enrollment } from "../models/enrollment.model.js";
 import { Course } from "../models/course.model.js";
+import { notifyAdminDashboard } from "../utils/dashboardNotifier.js";
 
 const GetEnrollments = asyncHandler(async (req, res) => {
     const { role, _id } = req.user;
@@ -69,6 +70,7 @@ const EnrollNewUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Somethign went wrong while enrollment !!")
     }
 
+    notifyAdminDashboard();
 
     await newEnrollment.populate([
         { path: "userId", select: "avatar fullName role" },
@@ -79,7 +81,6 @@ const EnrollNewUser = asyncHandler(async (req, res) => {
         new ApiResponse(201, newEnrollment, "Successfully enrolled into new course.")
     )
 })
-
 
 // TODO: Users list's enrolled in course
 const GetEnrolledStudents = asyncHandler(async (req, res) => {
@@ -152,7 +153,8 @@ const CancelEnrollment = asyncHandler(async (req, res) => {
 
     enrollment.status = "CANCELLED";
     await enrollment.save();
-
+    notifyAdminDashboard();
+    
     return res.status(200).json(
         new ApiResponse(200, enrollment, "Enrollment cancelled successfully")
     );
@@ -176,8 +178,8 @@ const UpdateEnrollmentStatus = asyncHandler(async (req, res) => {
     // system-only logic
     enrollment.status = "COMPLETED";
     enrollment.completedAt = new Date();
-
     await enrollment.save();
+    notifyAdminDashboard();
 
     return res.status(200).json(
         new ApiResponse(200, enrollment, "Course completed successfully")

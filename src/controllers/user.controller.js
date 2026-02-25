@@ -4,10 +4,13 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 
 import { User } from "../models/user.model.js";
+import { Course } from "../models/course.model.js";
+import { Enrollment } from "../models/enrollment.model.js";
 import { EmailVerification } from "../models/emailVerification.model.js";
 import { PasswordReset } from "../models/passwordReset.model.js";
 
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { notifyAdminDashboard } from "../utils/dashboardNotifier.js";
 import { sendOtp } from "../utils/nodemailer.js";
 
 import crypto from "crypto";
@@ -114,6 +117,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
     user.isEmailVerified = true;
     await user.save();
+    notifyAdminDashboard();
 
     await EmailVerification.deleteMany({ userId: user._id });
 
@@ -345,6 +349,7 @@ const updateUserStatus = asyncHandler(async (req, res) => {
 
     user.status = status;
     await user.save();
+    notifyAdminDashboard();
 
     return res.status(200).json(
         new ApiResponse(200, user, "User status updated successfully")
@@ -521,8 +526,96 @@ const resetPassword = asyncHandler(async (req, res) => {
     );
 });
 
+const calculateAdminDashboardStats = async () => {
+    const currentYear = new Date().getFullYear();
+
+    // Parallel queries (better performance)
+    const [
+        totalUsers,
+        totalCourses,
+        publishedCourses,
+        draftCourses,
+        unpublishedCourses,
+        totalEnrollments,
+        activeEnrollments,
+        recentEnrollments,
+        monthlyEnrollments,
+    ] = await Promise.all([
+        /**
+         * What we need
+         * 
+         * total users
+         * total courses (published, draft, unpublished)
+         * total enrollments(
+         *  recent enrollments(username, course, coursetype, date, enrollmentstatus)
+         * )
+         * publishing rate
+         * 
+         */
+
+        User.countDocuments(),
+
+        Course.countDocuments(),
+        Course.countDocuments({ status: "PUBLISHED" }),
+        Course.countDocuments({ status: "DRAFT" }),
+        Course.countDocuments({ status: "UNPUBLISHED" }),
+
+        Enrollment.countDocuments(),
+        Enrollment.countDocuments({ status: "ACTIVE" }),
+        Enrollment.find()
+            .sort({ createdAt: -1 })
+            .limit(2)
+            .populate("userId", "fullName")
+            .populate("courseId", "title courseType"),
+        Enrollment.aggregate([
+            {
+                $match: {
+                    createdAt: {
+                        $gte: new Date(`${currentYear}-01-01`),
+                        $lte: new Date(`${currentYear}-12-31`)
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: { $month: "$createdAt" },
+                    enrollments: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ])
+    ]);
+
+    const publishingRate =
+        totalCourses === 0
+            ? 0
+            : Number(((publishedCourses / totalCourses) * 100).toFixed(1));
+
+    return {
+        totalUsers,
+        totalCourses,
+        publishedCourses,
+        publishingRate,
+        draftCourses,
+        unpublishedCourses,
+        totalEnrollments,
+        activeEnrollments,
+        recentEnrollments,
+        monthlyEnrollments,
+    }
+};
+
+const getAdminDashboardStats = asyncHandler(async (req, res) => {
+    const stats = await calculateAdminDashboardStats();
+
+    return res.status(200).json(
+        new ApiResponse(200, stats, "Admin dashboard stats fetched successfully")
+    );
+});
 
 export {
+    getAdminDashboardStats,
+    calculateAdminDashboardStats,
     signup,
     verifyOtp,
     login,
