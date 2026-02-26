@@ -2,9 +2,9 @@ import { Router } from "express";
 import {
     EnrollNewUser,
     GetEnrolledStudents,
-    CancelEnrollment,
-    UpdateEnrollmentStatus,
-    GetEnrollments
+    UpdateEnrollmentStatusByAdmin,
+    GetEnrollments,
+    UpdateEnrollmentStatusByUser
 } from "../controllers/enrollment.controller.js";
 
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -37,7 +37,7 @@ router.post(
 router.patch(
     "/complete/:courseId",
     verifyJWT,
-    UpdateEnrollmentStatus
+    UpdateEnrollmentStatusByUser
 );
 
 
@@ -55,12 +55,12 @@ router.get(
     GetEnrolledStudents
 );
 
-// Soft cancel enrollment (ADMIN / INSTRUCTOR)
+// Soft enrollment status update: ACTIVE, CANCELLED (ADMIN / INSTRUCTOR)
 router.patch(
-    "/cancel",
+    "/status",
     verifyJWT,
     authorizeRoles("ADMIN", "INSTRUCTOR"),
-    CancelEnrollment
+    UpdateEnrollmentStatusByAdmin
 );
 
 export default router;

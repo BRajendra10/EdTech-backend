@@ -33,8 +33,30 @@ const GetEnrollments = asyncHandler(async (req, res) => {
             .sort({ createdAt: -1 });
     }
 
+    const uniqueCoursesMap = new Map();
+
+    enrollments.forEach((enrollment) => {
+        if (enrollment.courseId) {
+            const courseId = enrollment.courseId._id.toString();
+
+            uniqueCoursesMap.set(courseId, {
+                _id: enrollment.courseId._id,
+                title: enrollment.courseId.title
+            });
+        }
+    });
+
+    const uniqueCourses = Array.from(uniqueCoursesMap.values());
+
     return res.status(200).json(
-        new ApiResponse(200, enrollments, "Enrollments fetched successfully")
+        new ApiResponse(
+            200,
+            {
+                enrollments,
+                courses: uniqueCourses
+            },
+            "Enrollments fetched successfully"
+        )
     );
 });
 
@@ -82,7 +104,7 @@ const EnrollNewUser = asyncHandler(async (req, res) => {
     )
 })
 
-// TODO: Users list's enrolled in course
+// TODO: Users list's enrolled in course -
 const GetEnrolledStudents = asyncHandler(async (req, res) => {
     const { courseId } = req.params;
 
@@ -137,31 +159,8 @@ const GetEnrolledStudents = asyncHandler(async (req, res) => {
     );
 })
 
-// Cancel Enrollment function
-const CancelEnrollment = asyncHandler(async (req, res) => {
-    const { userId, courseId } = req.body;
-
-    if (!isValidObjectId(userId) || !isValidObjectId(courseId)) {
-        throw new ApiError(400, "Invalid IDs");
-    }
-
-    const enrollment = await Enrollment.findOne({ userId, courseId });
-
-    if (!enrollment) {
-        throw new ApiError(404, "Enrollment not found");
-    }
-
-    enrollment.status = "CANCELLED";
-    await enrollment.save();
-    notifyAdminDashboard();
-    
-    return res.status(200).json(
-        new ApiResponse(200, enrollment, "Enrollment cancelled successfully")
-    );
-});
-
 // Update enrollment status function
-const UpdateEnrollmentStatus = asyncHandler(async (req, res) => {
+const UpdateEnrollmentStatusByUser = asyncHandler(async (req, res) => {
     const { courseId } = req.params;
     const userId = req.user._id;
 
@@ -186,11 +185,47 @@ const UpdateEnrollmentStatus = asyncHandler(async (req, res) => {
     );
 });
 
+// Update enrollment status function
+const UpdateEnrollmentStatusByAdmin = asyncHandler(async (req, res) => {
+    const { courseId, userId, status } = req.body;
+
+    if (!status) {
+        throw new ApiError(400, "Status is required");
+    }
+
+    if (status === "COMPLETED") {
+        throw new ApiError(400, "Invalid status");
+    }
+
+    if (!isValidObjectId(courseId) || !isValidObjectId(userId)) {
+        throw new ApiError(400, "Invalid IDs");
+    }
+
+    const enrollment = await Enrollment.findOne({ userId, courseId });
+
+    if (!enrollment) {
+        throw new ApiError(404, "Enrollment not found");
+    }
+
+    enrollment.status = status;
+    await enrollment.save();
+    notifyAdminDashboard();
+
+    await enrollment.populate([
+        { path: "userId" },
+        { path: "courseId" }
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(200, enrollment, "Enrollment status updated successfully")
+    )
+});
+
 
 export {
     GetEnrollments,
     EnrollNewUser,
     GetEnrolledStudents,
-    CancelEnrollment,
-    UpdateEnrollmentStatus
+    UpdateEnrollmentStatusByUser,
+    UpdateEnrollmentStatusByAdmin
 }
