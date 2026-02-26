@@ -16,19 +16,20 @@ import { sendOtp } from "../utils/nodemailer.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
+const isProduction = process.env.NODE_ENV === "production";
 const accessTokenOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: "None",
-    maxAge: 1000 * 60 * 15
+    secure: isProduction,                 // true only in production (HTTPS)
+    sameSite: isProduction ? "None" : "Lax", // "None" for cross-site in prod, "Lax" for localhost
+    maxAge: 1000 * 60 * 15,               // 15 minutes
 };
 
 const refreshTokenOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: "None",
-    maxAge: 1000 * 60 * 60 * 24 * 15
-}
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 1000 * 60 * 60 * 24 * 15,      // 15 days
+};
 
 const signup = asyncHandler(async (req, res) => {
     const { fullName, email, password, role } = req.body;
@@ -183,13 +184,12 @@ const login = asyncHandler(async (req, res) => {
     }
 
     if (user.status === "PENDING") {
-        throw new ApiError(401, "Your account is not active !!")
+        throw new ApiError(400, "Your account is not active !!")
     }
 
     if (!user.isEmailVerified) {
         throw new ApiError(400, "Please verify your email first");
     }
-
     const isPasswordValid = await user.isPasswordCorrect(password);
     if (!isPasswordValid) {
         throw new ApiError(400, "Invalid password !!")
@@ -541,17 +541,6 @@ const calculateAdminDashboardStats = async () => {
         recentEnrollments,
         monthlyEnrollments,
     ] = await Promise.all([
-        /**
-         * What we need
-         * 
-         * total users
-         * total courses (published, draft, unpublished)
-         * total enrollments(
-         *  recent enrollments(username, course, coursetype, date, enrollmentstatus)
-         * )
-         * publishing rate
-         * 
-         */
 
         User.countDocuments(),
 
@@ -605,17 +594,66 @@ const calculateAdminDashboardStats = async () => {
     }
 };
 
-const getAdminDashboardStats = asyncHandler(async (req, res) => {
-    const stats = await calculateAdminDashboardStats();
+const calculateUserDashboardStats = async (userId) => {
+    const currentYear = new Date().getFullYear();
 
-    return res.status(200).json(
-        new ApiResponse(200, stats, "Admin dashboard stats fetched successfully")
-    );
-});
+    const [
+        totalEnrollments,
+        activeEnrollments,
+        completedEnrollments,
+        recentEnrollments,
+        monthlyEnrollments,
+    ] = await Promise.all([
+
+        Enrollment.countDocuments({ userId }),
+
+        Enrollment.countDocuments({
+            userId,
+            status: "ACTIVE"
+        }),
+
+        Enrollment.countDocuments({
+            userId,
+            status: "COMPLETED"
+        }),
+
+        Enrollment.find({ userId })
+            .sort({ createdAt: -1 })
+            .limit(3)
+            .populate("courseId", "title courseType"),
+
+        Enrollment.aggregate([
+            {
+                $match: {
+                    userId: new mongoose.Types.ObjectId(userId),
+                    createdAt: {
+                        $gte: new Date(`${currentYear}-01-01`),
+                        $lte: new Date(`${currentYear}-12-31`)
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: { $month: "$createdAt" },
+                    enrollments: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ])
+    ]);
+
+    return {
+        totalEnrollments,
+        activeEnrollments,
+        completedEnrollments,
+        recentEnrollments,
+        monthlyEnrollments,
+    };
+};
 
 export {
-    getAdminDashboardStats,
     calculateAdminDashboardStats,
+    calculateUserDashboardStats,
     signup,
     verifyOtp,
     login,

@@ -4,38 +4,76 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Enrollment } from "../models/enrollment.model.js";
 import { Course } from "../models/course.model.js";
-import { notifyAdminDashboard } from "../utils/dashboardNotifier.js";
+import { notifyAdminDashboard, notifyUserDashboard } from "../utils/dashboardNotifier.js";
 
 const GetEnrollments = asyncHandler(async (req, res) => {
     const { role, _id } = req.user;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
-    let enrollments;
+    let matchStage = {};
 
     if (role === "STUDENT") {
-        // Student: Fetch only their own enrollments
-        enrollments = await Enrollment.find({ userId: _id })
-            .populate({
-                path: "courseId",
-                select: "title thumbnail description price isFree status"
-            })
-            .sort({ createdAt: -1 });
-    } else {
-        // Admin/Instructor: Fetch all enrollments in the system
-        enrollments = await Enrollment.find({})
-            .populate({
-                path: "userId",
-                select: "fullName email avatar"
-            })
-            .populate({
-                path: "courseId",
-                select: "title thumbnail"
-            })
-            .sort({ createdAt: -1 });
+        matchStage.userId = new mongoose.Types.ObjectId(_id);
     }
+
+    const pipeline = [
+        { $match: matchStage },
+        { $sort: { createdAt: -1 } },
+        {
+            $lookup: {
+                from: "courses",
+                localField: "courseId",
+                foreignField: "_id",
+                as: "courseId",
+                pipeline: [
+                    {
+                        $project: {
+                            title: 1,
+                            thumbnail: 1,
+                            description: 1,
+                            price: 1,
+                            isFree: 1,
+                            status: 1
+                        }
+                    }
+                ]
+            }
+        },
+        { $unwind: { path: "$courseId", preserveNullAndEmptyArrays: true } }
+    ];
+
+    if (role !== "STUDENT") {
+        pipeline.push(
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "userId",
+                    pipeline: [
+                        {
+                            $project: {
+                                fullName: 1,
+                                email: 1,
+                                avatar: 1
+                            }
+                        }
+                    ]
+                }
+            },
+            { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } }
+        );
+    }
+
+    const enrollments = await Enrollment.aggregatePaginate(
+        Enrollment.aggregate(pipeline),
+        { page, limit }
+    );
 
     const uniqueCoursesMap = new Map();
 
-    enrollments.forEach((enrollment) => {
+    enrollments?.docs?.forEach((enrollment) => {
         if (enrollment.courseId) {
             const courseId = enrollment.courseId._id.toString();
 
@@ -51,10 +89,7 @@ const GetEnrollments = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
             200,
-            {
-                enrollments,
-                courses: uniqueCourses
-            },
+            {enrollments, uniqueCourses},
             "Enrollments fetched successfully"
         )
     );
@@ -93,6 +128,7 @@ const EnrollNewUser = asyncHandler(async (req, res) => {
     }
 
     notifyAdminDashboard();
+    notifyUserDashboard(userId);
 
     await newEnrollment.populate([
         { path: "userId", select: "avatar fullName role" },
@@ -178,6 +214,7 @@ const UpdateEnrollmentStatusByUser = asyncHandler(async (req, res) => {
     enrollment.status = "COMPLETED";
     enrollment.completedAt = new Date();
     await enrollment.save();
+    notifyUserDashboard(userId);
     notifyAdminDashboard();
 
     return res.status(200).json(
@@ -209,6 +246,7 @@ const UpdateEnrollmentStatusByAdmin = asyncHandler(async (req, res) => {
 
     enrollment.status = status;
     await enrollment.save();
+    notifyUserDashboard(userId);
     notifyAdminDashboard();
 
     await enrollment.populate([

@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const enrollmentSchema = new Schema(
     {
@@ -41,5 +42,7 @@ enrollmentSchema.index(
     { userId: 1, courseId: 1 },
     { unique: true }
 );
+
+enrollmentSchema.plugin(aggregatePaginate);
 
 export const Enrollment = mongoose.model("Enrollment", enrollmentSchema);
