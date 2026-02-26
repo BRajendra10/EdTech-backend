@@ -4,7 +4,14 @@ This repository contains the **backend API** for a **Learning Management System 
 
 Built using **Node.js, Express, and MongoDB (Mongoose)**, the project follows **clean architecture principles**, centralized error handling, and secure authentication using **JWT**.
 
-**Preview:** [Preview](https://drive.google.com/file/d/1zXOpIP9RiClN1xvF_3alwe3NP_GN4pad/view?usp=drivesdk)  
+---
+
+🎥 **Demo Preview**
+
+The current preview showcases core functionality of the project.  
+A refreshed walkthrough highlighting recent UI improvements will be added soon.
+
+**Watch Demo:** [View Here](https://drive.google.com/file/d/1zXOpIP9RiClN1xvF_3alwe3NP_GN4pad/view?usp=drivesdk)
 
 ---
 
