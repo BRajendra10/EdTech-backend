@@ -4,13 +4,14 @@ This repository contains the **backend API** for a **Learning Management System 
 
 Built using **Node.js, Express, and MongoDB (Mongoose)**, the project follows **clean architecture principles**, centralized error handling, and secure authentication using **JWT**.
 
-**Privew:** [Privew](https://drive.google.com/file/d/1zXOpIP9RiClN1xvF_3alwe3NP_GN4pad/view?usp=drivesdk)  
+**Preview:** [Preview](https://drive.google.com/file/d/1zXOpIP9RiClN1xvF_3alwe3NP_GN4pad/view?usp=drivesdk)  
 
 ---
 
 ## ✨ Key Highlights
 
 * **Role-based Authentication & Authorization**
+* **Real-time dashboard updates with Server-Sent Events (SSE)**
 * **Secure JWT-based login system**
 * **Modular, scalable project structure**
 * **Consistent API response & error format**
@@ -47,11 +48,11 @@ The system supports **three user roles**, each with clearly defined permissions:
 
   * `DRAFT`
   * `PUBLISHED`
-  * `ARCHIVED`
+  * `UNPUBLISHED`
 
 ---
 
-## 🧩 Modules & Lessons
+## 🧩 Modules & Lessions
 
 Courses are structured for better learning flow:
 
@@ -60,14 +61,13 @@ Courses are structured for better learning flow:
 * Belong to a specific course
 * Ordered sequence for learning paths
 
-### Lessons
+### Lessions
 
 * Belong to modules
 * Include:
 
   * Video URL
   * Duration
-  * Resources (links / files)
 * Strict ordering inside modules
 
 ---
@@ -87,6 +87,8 @@ Courses are structured for better learning flow:
 ## 🛡️ Security Features
 
 * Password hashing using **bcrypt**
+* **Email verification** for new users
+* Secure **password reset** flow
 * Authentication via **JWT (Access + Refresh tokens)**
 * Secure cookies (`httpOnly`, `sameSite`, `secure`)
 * Centralized authentication middleware
@@ -176,10 +178,10 @@ This project is intentionally designed to scale:
 
 ## 📌 Status
 
-✅ User Management
-✅ Course Management
-✅ Modules & Lessons
-✅ Enrollment System
+✅ User Management  
+✅ Course Management  
+✅ Modules & Lessons  
+✅ Enrollment System  
 ✅ Role-Based Access Control
 
 ---
