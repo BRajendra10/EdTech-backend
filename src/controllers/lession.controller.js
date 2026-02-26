@@ -47,25 +47,21 @@ const addLession = asyncHandler(async (req, res) => {
         throw new ApiError(409, "Lesson already exists at this order !!");
     }
 
+    if (!req.file?.path) {
+        throw new ApiError(400, "Video file is required !!");
+    }
+
     let videoUpload;
-    let thumbnailUpload;
 
     try {
-        videoUpload = await uploadOnCloudinary(req.files.videoFile[0].path, "video");
+        videoUpload = await uploadOnCloudinary(req.file.path, "video");
 
         if (!videoUpload) {
             throw new ApiError(500, "Video upload failed !!");
         }
-
-        if (req.files?.thumbnail) {
-            thumbnailUpload = await uploadOnCloudinary(req.files.thumbnail[0].path, "image");
-        }
     } catch (error) {
         if (videoUpload?.public_id) {
             await deleteFromCloudinary(videoUpload.public_id, "video");
-        }
-        if (thumbnailUpload?.public_id) {
-            await deleteFromCloudinary(thumbnailUpload.public_id, "image");
         }
         throw error;
     }
@@ -77,8 +73,6 @@ const addLession = asyncHandler(async (req, res) => {
         duration: videoUpload.duration,
         videoUrl: videoUpload.secure_url,
         videoPublicId: videoUpload.public_id,
-        thumbnail: thumbnailUpload?.secure_url,
-        thumbnailPublicId: thumbnailUpload?.public_id,
     });
 
     notifyAdminDashboard();
@@ -91,16 +85,14 @@ const addLession = asyncHandler(async (req, res) => {
 // TODO: Update lession
 const updateLession = asyncHandler(async (req, res) => {
     const { lessonId } = req.params;
-    const { title, resources } = req.body;
+    const { title } = req.body;
 
     if (!lessonId || !isValidObjectId(lessonId)) {
         throw new ApiError(400, "Valid lessonId is required !!");
     }
 
     if (
-        title === undefined &&
-        !req.files?.videoFile?.[0] &&
-        !req.files?.thumbnail?.[0]
+        title === undefined && !req.file
     ) {
         throw new ApiError(400, "At least one field is required to update !!");
     }
@@ -112,13 +104,10 @@ const updateLession = asyncHandler(async (req, res) => {
     }
 
     let newVideoUpload;
-    let newThumbnailUpload;
-
-    // req.files?.videoFile?.[0]?.path
 
     try {
-        if (req.files?.videoFile?.[0]) {
-            newVideoUpload = await uploadOnCloudinary(req.files.videoFile[0].path, "video");
+        if (req.file) {
+            newVideoUpload = await uploadOnCloudinary(req.file.path, "video");
 
             if (!newVideoUpload) {
                 throw new ApiError(500, "Video upload failed");
@@ -133,28 +122,9 @@ const updateLession = asyncHandler(async (req, res) => {
             lesson.videoPublicId = newVideoUpload.public_id;
             lesson.duration = newVideoUpload.duration;
         }
-
-        if (req.files?.thumbnail?.[0]) {
-            newThumbnailUpload = await uploadOnCloudinary(req.files.thumbnail[0].path, "image");
-
-            if (!newThumbnailUpload) {
-                throw new ApiError(500, "Image upload failed");
-            }
-
-            // delete old video
-            if (lesson.thumbnailPublicId) {
-                await deleteFromCloudinary(lesson.thumbnailPublicId);
-            }
-
-            lesson.thumbnail = newThumbnailUpload.secure_url;
-            lesson.thumbnailPublicId = newThumbnailUpload.public_id;
-        }
     } catch (error) {
         if (newVideoUpload?.public_id) {
             await deleteFromCloudinary(newVideoUpload.public_id);
-        }
-        if (newThumbnailUpload?.public_id) {
-            await deleteFromCloudinary(newThumbnailUpload.public_id);
         }
         throw error;
     }
@@ -191,10 +161,6 @@ const deleteLession = asyncHandler(async (req, res) => {
     try {
         if (lesson.videoPublicId) {
             await deleteFromCloudinary(lesson.videoPublicId);
-        }
-
-        if (lesson.thumbnailPublicId) {
-            await deleteFromCloudinary(lesson.thumbnailPublicId);
         }
     } catch (error) {
         throw new ApiError(

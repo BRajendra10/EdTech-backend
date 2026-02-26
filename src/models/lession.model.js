@@ -24,9 +24,6 @@ const LessonSchema = new Schema(
             type: Number,
             required: true
         },
-        resources: {
-            type: String,
-        },
         order: {
             type: Number,
             required: true,

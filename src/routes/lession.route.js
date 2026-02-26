@@ -18,10 +18,7 @@ router.use(verifyJWT)
 router.post(
     "/:moduleId",
     authorizeRoles("ADMIN", "INSTRUCTOR"),
-    upload.fields([
-        { name: "videoFile", maxCount: 1 },
-        { name: "thumbnail", maxCount: 1 }
-    ]),
+    upload.single("videoFile"),
     addLession
 );
 
@@ -29,10 +26,7 @@ router.post(
 router.patch(
     "/:lessonId",
     authorizeRoles("ADMIN", "INSTRUCTOR"),
-    upload.fields([
-        { name: "videoFile", maxCount: 1 },
-        { name: "thumbnail", maxCount: 1 }
-    ]),
+    upload.single("videoFile"),
     updateLession
 );
 
