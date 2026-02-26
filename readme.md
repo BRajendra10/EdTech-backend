@@ -199,7 +199,8 @@ Made by **Rajendra Behera**
 
 **Email:** [rajendrabehera8116@gmail.com](mailto:rajendrabehera8116@gmail.com)  
 **LinkedIn:** [/behera-rajendra](https://www.linkedin.com/in/behera-rajendra/)  
-**GitHub:** [/BRajendra10](https://github.com/BRajendra10)
+**GitHub:** [/BRajendra10](https://github.com/BRajendra10)  
+
 **Frontend:** [EdTech-Frontend](https://github.com/BRajendra10/EdTech-fronted)  
 **Backend:** [EdTech-Backend](https://github.com/BRajendra10/EdTech-bacend)  
 
