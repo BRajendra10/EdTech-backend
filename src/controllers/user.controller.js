@@ -16,7 +16,7 @@ import { sendOtp } from "../utils/nodemailer.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env.NODE_ENV !== "production";
 const accessTokenOptions = {
     httpOnly: true,
     secure: isProduction,                 // true only in production (HTTPS)
