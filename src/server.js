@@ -22,6 +22,7 @@ import courseRouter from "./routes/course.route.js";
 import moduleRouter from "./routes/module.route.js";
 import lessionRouter from "./routes/lession.route.js";
 import enrollmentRouter from "./routes/enrollment.routes.js";
+import streamRouter from "./routes/stream.route.js";
 
 // route decleration
 app.use("/api/v1/users", userRouter)
@@ -29,6 +30,7 @@ app.use("/api/v1/courses", courseRouter)
 app.use("/api/v1/modules", moduleRouter)
 app.use("/api/v1/lessons", lessionRouter)
 app.use("/api/v1/enrollments", enrollmentRouter)
+app.use("/api/v1/stream", streamRouter)
 
 app.use(errorHandler)
 
