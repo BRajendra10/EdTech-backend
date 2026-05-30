@@ -17,7 +17,8 @@ import {
     verifyOtp,
     verifyResetOtp,
     calculateAdminDashboardStats,
-    calculateUserDashboardStats
+    calculateUserDashboardStats,
+    getCurrentUser
 } from "../controllers/user.controller.js";
 
 const router = Router();
@@ -29,6 +30,8 @@ router.route("/refresh-token").post(refreshAccessToken)
 router.route("/login").post(login)
 router.route("/change-password").post(verifyJWT, changeCurrentPassword)
 router.route("/logout").post(verifyJWT, logout)
+router.route("/me").get(verifyJWT, getCurrentUser)
+
 
 router.post("/forgot-password", forgotPassword);
 router.post("/verify-reset-otp", verifyResetOtp);
